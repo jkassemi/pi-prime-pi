@@ -55,6 +55,7 @@ import type { KeybindingsManager } from "../keybindings.ts";
 import type { CustomMessage } from "../messages.ts";
 import type { ModelRegistry } from "../model-registry.ts";
 import type { ScopedModel } from "../model-resolver.ts";
+import type { CreateAgentSessionOptions, CreateAgentSessionResult } from "../sdk.ts";
 import type {
 	BranchSummaryEntry,
 	CompactionEntry,
@@ -300,6 +301,16 @@ export interface CompactOptions {
 }
 
 /**
+ * AgentSession options available to extensions.
+ *
+ * The host supplies the current session's canonical model runtime so child
+ * sessions preserve dynamic providers, runtime credentials, and request
+ * configuration without requiring extensions to reconstruct runtime state or
+ * placing ModelRuntime directly on ExtensionContext.
+ */
+export type ExtensionAgentSessionOptions = Omit<CreateAgentSessionOptions, "modelRuntime">;
+
+/**
  * Context passed to extension event handlers.
  */
 export type ExtensionMode = "tui" | "rpc" | "json" | "print";
@@ -344,6 +355,15 @@ export interface ExtensionContext {
 	compact(options?: CompactOptions): void;
 	/** Get the current effective system prompt. */
 	getSystemPrompt(): string;
+	/**
+	 * Create an independent AgentSession bound to this session's canonical model runtime.
+	 *
+	 * No conversation is copied. Resource, tool, settings, and persistence behavior comes
+	 * from the supplied SDK options, including normal SDK defaults when omitted. The caller
+	 * owns the returned session and must dispose it. Disposing it does not dispose the shared
+	 * model runtime.
+	 */
+	createAgentSession(options?: ExtensionAgentSessionOptions): Promise<CreateAgentSessionResult>;
 }
 
 /**
@@ -1656,6 +1676,7 @@ export interface ExtensionContextActions {
 	getContextUsage: () => ContextUsage | undefined;
 	compact: (options?: CompactOptions) => void;
 	getSystemPrompt: () => string;
+	createAgentSession: (options?: ExtensionAgentSessionOptions) => Promise<CreateAgentSessionResult>;
 	getSystemPromptOptions?: () => BuildSystemPromptOptions;
 }
 

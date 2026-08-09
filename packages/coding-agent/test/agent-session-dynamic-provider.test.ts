@@ -7,10 +7,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AuthStorage } from "../src/core/auth-storage.ts";
 import { ModelRuntime } from "../src/core/model-runtime.ts";
 import { DefaultResourceLoader } from "../src/core/resource-loader.ts";
-import type { ExtensionFactory } from "../src/core/sdk.ts";
+import type { ExtensionContext, ExtensionFactory } from "../src/core/sdk.ts";
 import { createAgentSession } from "../src/core/sdk.ts";
 import { SessionManager } from "../src/core/session-manager.ts";
 import { SettingsManager } from "../src/core/settings-manager.ts";
+import { createTestResourceLoader } from "./utilities.ts";
 
 function nativeAnthropicProvider(baseUrl: string): Provider {
 	const model = { ...getModel("anthropic", "claude-sonnet-4-5")!, baseUrl };
@@ -91,6 +92,39 @@ describe("AgentSession dynamic provider registration", () => {
 		await session.prompt("hello");
 		return baseUrl;
 	}
+
+	it("creates extension child sessions with the parent canonical model runtime", async () => {
+		let createChildSession: ExtensionContext["createAgentSession"] | undefined;
+		const parent = await createSession([
+			(pi) => {
+				pi.on("session_start", (_event, ctx) => {
+					createChildSession = ctx.createAgentSession;
+				});
+			},
+		]);
+
+		await parent.bindExtensions({});
+		expect(createChildSession).toBeDefined();
+		if (!createChildSession || !parent.model) {
+			throw new Error("Expected child-session factory and parent model");
+		}
+
+		const childResult = await createChildSession({
+			cwd: tempDir,
+			agentDir,
+			model: parent.model,
+			settingsManager: SettingsManager.inMemory(),
+			sessionManager: SessionManager.inMemory(tempDir),
+			resourceLoader: createTestResourceLoader(),
+		});
+
+		expect(childResult.session).not.toBe(parent);
+		expect(childResult.session.modelRuntime).toBe(parent.modelRuntime);
+		expect(childResult.session.messages).toEqual([]);
+
+		childResult.session.dispose();
+		parent.dispose();
+	});
 
 	it("applies top-level registerProvider overrides to the active model", async () => {
 		const session = await createSession([

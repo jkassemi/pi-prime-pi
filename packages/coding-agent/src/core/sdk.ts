@@ -98,6 +98,7 @@ export interface CreateAgentSessionResult {
 
 export * from "./agent-session-runtime.ts";
 export type {
+	ExtensionAgentSessionOptions,
 	ExtensionAPI,
 	ExtensionCommandContext,
 	ExtensionContext,
@@ -387,6 +388,11 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 		excludedToolNames,
 		extensionRunnerRef,
 		sessionStartEvent: options.sessionStartEvent,
+		createAgentSession: (childOptions = {}) =>
+			createAgentSession({
+				...childOptions,
+				modelRuntime,
+			}),
 	});
 	const extensionsResult = resourceLoader.getExtensions();
 

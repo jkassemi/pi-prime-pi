@@ -69,6 +69,7 @@ import { exportSessionToHtml, type ToolHtmlRenderer } from "./export-html/index.
 import { createToolHtmlRenderer } from "./export-html/tool-renderer.ts";
 import {
 	type ContextUsage,
+	type ExtensionAgentSessionOptions,
 	type ExtensionCommandContextActions,
 	type ExtensionErrorListener,
 	type ExtensionMode,
@@ -99,6 +100,7 @@ import { ModelRegistry } from "./model-registry.ts";
 import type { ModelRuntime } from "./model-runtime.ts";
 import { expandPromptTemplate, type PromptTemplate } from "./prompt-templates.ts";
 import type { ResourceExtensionPaths, ResourceLoader } from "./resource-loader.ts";
+import type { CreateAgentSessionResult } from "./sdk.ts";
 import type { BranchSummaryEntry, CompactionEntry, SessionEntry, SessionManager } from "./session-manager.ts";
 import { CURRENT_SESSION_VERSION, getLatestCompactionEntry, type SessionHeader } from "./session-manager.ts";
 import type { SettingsManager } from "./settings-manager.ts";
@@ -225,6 +227,8 @@ export interface AgentSessionConfig {
 	extensionRunnerRef?: { current?: ExtensionRunner };
 	/** Session start event metadata emitted when extensions bind to this runtime. */
 	sessionStartEvent?: SessionStartEvent;
+	/** Host-bound factory used by extensions to create sessions sharing this session's model runtime. */
+	createAgentSession?: (options?: ExtensionAgentSessionOptions) => Promise<CreateAgentSessionResult>;
 }
 
 export interface ExtensionBindings {
@@ -362,6 +366,7 @@ export class AgentSession {
 	private _extensionErrorUnsubscriber?: () => void;
 
 	private _modelRuntime: ModelRuntime;
+	private _createAgentSession: (options?: ExtensionAgentSessionOptions) => Promise<CreateAgentSessionResult>;
 
 	// Tool registry for extension getTools/setTools
 	private _toolRegistry: Map<string, AgentTool> = new Map();
@@ -383,6 +388,13 @@ export class AgentSession {
 		this._customTools = config.customTools ?? [];
 		this._cwd = config.cwd;
 		this._modelRuntime = config.modelRuntime;
+		this._createAgentSession =
+			config.createAgentSession ??
+			(async () => {
+				throw new Error(
+					"AgentSession creation is unavailable because this session was constructed without a host factory",
+				);
+			});
 		this._extensionRunnerRef = config.extensionRunnerRef;
 		this._initialActiveToolNames = config.initialActiveToolNames;
 		this._allowedToolNames = config.allowedToolNames ? new Set(config.allowedToolNames) : undefined;
@@ -404,6 +416,11 @@ export class AgentSession {
 
 	get modelRuntime(): ModelRuntime {
 		return this._modelRuntime;
+	}
+
+	/** Create an independent session that shares this session's canonical model runtime. */
+	createAgentSession(options?: ExtensionAgentSessionOptions): Promise<CreateAgentSessionResult> {
+		return this._createAgentSession(options);
 	}
 
 	private async _getRequiredRequestAuth(model: Model<any>): Promise<{
@@ -2441,6 +2458,7 @@ export class AgentSession {
 					})();
 				},
 				getSystemPrompt: () => this.systemPrompt,
+				createAgentSession: (options) => this.createAgentSession(options),
 				getSystemPromptOptions: () => this._baseSystemPromptOptions,
 			},
 			{

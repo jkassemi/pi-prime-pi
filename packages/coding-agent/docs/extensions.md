@@ -1079,6 +1079,71 @@ pi.on("before_agent_start", (event, ctx) => {
 });
 ```
 
+### ctx.createAgentSession(options?)
+
+Creates an independent `AgentSession` using the current session's canonical model runtime. This preserves runtime API-key overrides, OAuth credentials, dynamic provider registrations, provider headers, base URLs, and provider-scoped environment without exposing `ModelRuntime` mutation methods on `ExtensionContext`.
+
+The method otherwise follows the SDK's `createAgentSession()` behavior:
+
+- no parent conversation messages are copied;
+- resource, tool, settings, cwd, and persistence behavior comes from the supplied options;
+- omitted options keep normal SDK defaults, including normal resource discovery;
+- the caller owns the returned session and must dispose it;
+- disposing the child does not dispose the shared model runtime.
+
+Extensions that need an isolated worker should provide an explicit resource loader and in-memory session/settings managers rather than relying on discovery defaults:
+
+```typescript
+import {
+  DefaultResourceLoader,
+  getAgentDir,
+  SessionManager,
+  SettingsManager,
+  type ExtensionAPI,
+} from "@earendil-works/pi-coding-agent";
+
+export default function (pi: ExtensionAPI) {
+  pi.registerCommand("isolated-task", {
+    handler: async (task, ctx) => {
+      const model = ctx.modelRegistry.find("anthropic", "claude-sonnet-4-5");
+      if (!model) throw new Error("Required model is unavailable");
+
+      const settingsManager = SettingsManager.inMemory();
+      const resourceLoader = new DefaultResourceLoader({
+        cwd: ctx.cwd,
+        agentDir: getAgentDir(),
+        settingsManager,
+        noExtensions: true,
+        noSkills: true,
+        noPromptTemplates: true,
+        noThemes: true,
+        noContextFiles: true,
+        systemPromptOverride: () => "Complete the delegated task and report briefly.",
+        appendSystemPromptOverride: () => [],
+      });
+      await resourceLoader.reload();
+
+      const { session } = await ctx.createAgentSession({
+        cwd: ctx.cwd,
+        model,
+        tools: ["read", "bash", "edit", "write"],
+        resourceLoader,
+        settingsManager,
+        sessionManager: SessionManager.inMemory(ctx.cwd),
+      });
+
+      try {
+        await session.prompt(task);
+      } finally {
+        session.dispose();
+      }
+    },
+  });
+}
+```
+
+A created session is not automatically aborted or disposed when its creating extension receives `session_shutdown`. Extensions that keep child sessions beyond a single callback must track them and clean them up from an idempotent shutdown handler.
+
 ## ExtensionCommandContext
 
 Command handlers receive `ExtensionCommandContext`, which extends `ExtensionContext` with session control methods. These are only available in commands because they can deadlock if called from event handlers.

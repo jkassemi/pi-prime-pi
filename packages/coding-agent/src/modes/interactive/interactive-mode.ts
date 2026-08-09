@@ -2017,6 +2017,7 @@ export class InteractiveMode {
 				})();
 			},
 			getSystemPrompt: () => this.session.systemPrompt,
+			createAgentSession: (options) => this.session.createAgentSession(options),
 		});
 
 		// Set up the extension shortcut handler on the default editor

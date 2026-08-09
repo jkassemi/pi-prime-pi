@@ -24,6 +24,7 @@ import type {
 	EntryRenderer,
 	Extension,
 	ExtensionActions,
+	ExtensionAgentSessionOptions,
 	ExtensionCommandContext,
 	ExtensionCommandContextActions,
 	ExtensionContext,
@@ -285,6 +286,9 @@ export class ExtensionRunner {
 	private getContextUsageFn: () => ContextUsage | undefined = () => undefined;
 	private compactFn: (options?: CompactOptions) => void = () => {};
 	private getSystemPromptFn: () => string = () => "";
+	private createAgentSessionFn: ExtensionContextActions["createAgentSession"] = async () => {
+		throw new Error("AgentSession creation is not bound to this extension context");
+	};
 	private getSystemPromptOptionsFn: () => BuildSystemPromptOptions = () => ({ cwd: this.cwd });
 	private newSessionHandler: NewSessionHandler = async () => ({ cancelled: false });
 	private forkHandler: ForkHandler = async () => ({ cancelled: false });
@@ -348,6 +352,7 @@ export class ExtensionRunner {
 		this.getContextUsageFn = contextActions.getContextUsage;
 		this.compactFn = contextActions.compact;
 		this.getSystemPromptFn = contextActions.getSystemPrompt;
+		this.createAgentSessionFn = contextActions.createAgentSession;
 		this.getSystemPromptOptionsFn = contextActions.getSystemPromptOptions ?? (() => ({ cwd: this.cwd }));
 
 		// Flush provider registrations queued during extension loading
@@ -746,6 +751,10 @@ export class ExtensionRunner {
 			getSystemPrompt: () => {
 				runner.assertActive();
 				return runner.getSystemPromptFn();
+			},
+			createAgentSession: (options?: ExtensionAgentSessionOptions) => {
+				runner.assertActive();
+				return runner.createAgentSessionFn(options);
 			},
 		};
 	}

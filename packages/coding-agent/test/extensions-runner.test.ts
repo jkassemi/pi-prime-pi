@@ -99,6 +99,9 @@ describe("ExtensionRunner", () => {
 		getContextUsage: () => undefined,
 		compact: () => {},
 		getSystemPrompt: () => "",
+		createAgentSession: async () => {
+			throw new Error("not configured");
+		},
 		getScopedModels: () => [],
 	};
 
@@ -501,6 +504,22 @@ describe("ExtensionRunner", () => {
 	});
 
 	describe("context creation", () => {
+		it("passes child AgentSession options to the bound host factory", async () => {
+			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
+			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
+			const createAgentSession = vi.fn(async () => {
+				throw new Error("sentinel");
+			});
+			runner.bindCore(extensionActions, {
+				...extensionContextActions,
+				createAgentSession,
+			});
+
+			const options = { cwd: path.join(tempDir, "child") };
+			await expect(runner.createContext().createAgentSession(options)).rejects.toThrow("sentinel");
+			expect(createAgentSession).toHaveBeenCalledWith(options);
+		});
+
 		it("exposes the current abort signal on ExtensionContext", async () => {
 			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
 			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
