@@ -70,6 +70,7 @@ import { createToolHtmlRenderer } from "./export-html/tool-renderer.ts";
 import {
 	type ContextUsage,
 	type ExtensionAgentSessionOptions,
+	type ExtensionAgentSessionResult,
 	type ExtensionCommandContextActions,
 	type ExtensionErrorListener,
 	type ExtensionMode,
@@ -100,7 +101,6 @@ import { ModelRegistry } from "./model-registry.ts";
 import type { ModelRuntime } from "./model-runtime.ts";
 import { expandPromptTemplate, type PromptTemplate } from "./prompt-templates.ts";
 import type { ResourceExtensionPaths, ResourceLoader } from "./resource-loader.ts";
-import type { CreateAgentSessionResult } from "./sdk.ts";
 import type { BranchSummaryEntry, CompactionEntry, SessionEntry, SessionManager } from "./session-manager.ts";
 import { CURRENT_SESSION_VERSION, getLatestCompactionEntry, type SessionHeader } from "./session-manager.ts";
 import type { SettingsManager } from "./settings-manager.ts";
@@ -228,7 +228,7 @@ export interface AgentSessionConfig {
 	/** Session start event metadata emitted when extensions bind to this runtime. */
 	sessionStartEvent?: SessionStartEvent;
 	/** Host-bound factory used by extensions to create sessions sharing this session's model runtime. */
-	createAgentSession?: (options?: ExtensionAgentSessionOptions) => Promise<CreateAgentSessionResult>;
+	createAgentSession?: (options?: ExtensionAgentSessionOptions) => Promise<ExtensionAgentSessionResult>;
 }
 
 export interface ExtensionBindings {
@@ -366,7 +366,7 @@ export class AgentSession {
 	private _extensionErrorUnsubscriber?: () => void;
 
 	private _modelRuntime: ModelRuntime;
-	private _createAgentSession: (options?: ExtensionAgentSessionOptions) => Promise<CreateAgentSessionResult>;
+	private _createAgentSession: (options?: ExtensionAgentSessionOptions) => Promise<ExtensionAgentSessionResult>;
 
 	// Tool registry for extension getTools/setTools
 	private _toolRegistry: Map<string, AgentTool> = new Map();
@@ -419,7 +419,7 @@ export class AgentSession {
 	}
 
 	/** Create an independent session that shares this session's canonical model runtime. */
-	createAgentSession(options?: ExtensionAgentSessionOptions): Promise<CreateAgentSessionResult> {
+	createAgentSession(options?: ExtensionAgentSessionOptions): Promise<ExtensionAgentSessionResult> {
 		return this._createAgentSession(options);
 	}
 

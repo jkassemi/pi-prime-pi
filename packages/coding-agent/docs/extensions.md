@@ -1081,14 +1081,16 @@ pi.on("before_agent_start", (event, ctx) => {
 
 ### ctx.createAgentSession(options?)
 
-Creates an independent `AgentSession` using the current session's canonical model runtime. This preserves runtime API-key overrides, OAuth credentials, dynamic provider registrations, provider headers, base URLs, and provider-scoped environment without exposing `ModelRuntime` mutation methods on `ExtensionContext`.
+Creates an independent `AgentSession` using the current session's canonical model runtime. This preserves runtime API-key overrides, OAuth credentials, dynamic provider registrations, provider headers, base URLs, and provider-scoped environment without exposing the concrete session or its `ModelRuntime` to the extension.
 
-The method otherwise follows the SDK's `createAgentSession()` behavior:
+The returned `session` is a restricted, frozen handle supporting `prompt()`, `subscribe()`, `abort()`, `waitForIdle()`, `dispose()`, and read-only snapshots of the current model, thinking level, idle state, and messages. It does not expose runtime, credential/provider administration, settings/session managers, the low-level agent, or extension-runner internals.
+
+The method otherwise follows the SDK's `createAgentSession()` construction behavior:
 
 - no parent conversation messages are copied;
 - resource, tool, settings, cwd, and persistence behavior comes from the supplied options;
 - omitted options keep normal SDK defaults, including normal resource discovery;
-- the caller owns the returned session and must dispose it;
+- the caller owns the returned handle and must dispose it;
 - disposing the child does not dispose the shared model runtime.
 
 Extensions that need an isolated worker should provide an explicit resource loader and in-memory session/settings managers rather than relying on discovery defaults:

@@ -3,10 +3,18 @@ import { Agent, type AgentMessage, setDefaultStreamFn, type ThinkingLevel } from
 import { clampThinkingLevel, type Message, type Model, streamSimple } from "@earendil-works/pi-ai/compat";
 import { getAgentDir } from "../config.ts";
 import { resolvePath } from "../utils/paths.ts";
-import { AgentSession } from "./agent-session.ts";
+import { AgentSession, type AgentSessionEventListener, type PromptOptions } from "./agent-session.ts";
 import { formatNoModelsAvailableMessage } from "./auth-guidance.ts";
 import { DEFAULT_THINKING_LEVEL } from "./defaults.ts";
-import type { ExtensionRunner, LoadExtensionsResult, SessionStartEvent, ToolDefinition } from "./extensions/index.ts";
+import type {
+	ExtensionAgentSession,
+	ExtensionAgentSessionOptions,
+	ExtensionAgentSessionResult,
+	ExtensionRunner,
+	LoadExtensionsResult,
+	SessionStartEvent,
+	ToolDefinition,
+} from "./extensions/index.ts";
 import { convertToLlm } from "./messages.ts";
 import { findInitialModel } from "./model-resolver.ts";
 import { ModelRuntime } from "./model-runtime.ts";
@@ -94,11 +102,49 @@ export interface CreateAgentSessionResult {
 	modelFallbackMessage?: string;
 }
 
+function restrictExtensionAgentSession(session: AgentSession): ExtensionAgentSession {
+	return Object.freeze({
+		get model() {
+			return session.model;
+		},
+		get thinkingLevel() {
+			return session.thinkingLevel;
+		},
+		get isIdle() {
+			return session.isIdle;
+		},
+		get messages() {
+			return [...session.messages];
+		},
+		prompt: (text: string, options?: PromptOptions) => session.prompt(text, options),
+		subscribe: (listener: AgentSessionEventListener) => session.subscribe(listener),
+		abort: () => session.abort(),
+		waitForIdle: () => session.waitForIdle(),
+		dispose: () => session.dispose(),
+	});
+}
+
+async function createExtensionAgentSession(
+	options: ExtensionAgentSessionOptions,
+	modelRuntime: ModelRuntime,
+): Promise<ExtensionAgentSessionResult> {
+	const { session, modelFallbackMessage } = await createAgentSession({
+		...options,
+		modelRuntime,
+	});
+	return {
+		session: restrictExtensionAgentSession(session),
+		modelFallbackMessage,
+	};
+}
+
 // Re-exports
 
 export * from "./agent-session-runtime.ts";
 export type {
+	ExtensionAgentSession,
 	ExtensionAgentSessionOptions,
+	ExtensionAgentSessionResult,
 	ExtensionAPI,
 	ExtensionCommandContext,
 	ExtensionContext,
@@ -388,11 +434,7 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 		excludedToolNames,
 		extensionRunnerRef,
 		sessionStartEvent: options.sessionStartEvent,
-		createAgentSession: (childOptions = {}) =>
-			createAgentSession({
-				...childOptions,
-				modelRuntime,
-			}),
+		createAgentSession: (childOptions = {}) => createExtensionAgentSession(childOptions, modelRuntime),
 	});
 	const extensionsResult = resourceLoader.getExtensions();
 

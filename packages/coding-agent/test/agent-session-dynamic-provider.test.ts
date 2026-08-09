@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Provider } from "@earendil-works/pi-ai";
 import { getModel } from "@earendil-works/pi-ai/compat";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthStorage } from "../src/core/auth-storage.ts";
 import { ModelRuntime } from "../src/core/model-runtime.ts";
 import { DefaultResourceLoader } from "../src/core/resource-loader.ts";
@@ -93,7 +93,7 @@ describe("AgentSession dynamic provider registration", () => {
 		return baseUrl;
 	}
 
-	it("creates extension child sessions with the parent canonical model runtime", async () => {
+	it("creates restricted extension child sessions with independent state", async () => {
 		let createChildSession: ExtensionContext["createAgentSession"] | undefined;
 		const parent = await createSession([
 			(pi) => {
@@ -119,8 +119,23 @@ describe("AgentSession dynamic provider registration", () => {
 		});
 
 		expect(childResult.session).not.toBe(parent);
-		expect(childResult.session.modelRuntime).toBe(parent.modelRuntime);
-		expect(childResult.session.messages).toEqual([]);
+		expect(childResult.session.model).toBe(parent.model);
+		const messages = childResult.session.messages;
+		expect(messages).toEqual([]);
+		expect(childResult.session.messages).not.toBe(messages);
+		expect(childResult.session).not.toHaveProperty("modelRuntime");
+		expect(childResult.session).not.toHaveProperty("sessionManager");
+		expect(childResult.session).not.toHaveProperty("settingsManager");
+		expect(childResult.session).not.toHaveProperty("agent");
+		expect(childResult.session).not.toHaveProperty("extensionRunner");
+		expect(Object.isFrozen(childResult.session)).toBe(true);
+
+		const runtimeStream = vi.spyOn(parent.modelRuntime, "streamSimple").mockImplementation(() => {
+			throw new Error("stop");
+		});
+		await childResult.session.prompt("hello");
+		expect(runtimeStream).toHaveBeenCalled();
+		runtimeStream.mockRestore();
 
 		childResult.session.dispose();
 		parent.dispose();

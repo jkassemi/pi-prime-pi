@@ -46,6 +46,7 @@ import type {
 } from "@earendil-works/pi-tui";
 import type { Static, TSchema } from "typebox";
 import type { Theme } from "../../modes/interactive/theme/theme.ts";
+import type { AgentSessionEvent, PromptOptions } from "../agent-session.ts";
 import type { BashResult } from "../bash-executor.ts";
 import type { CompactionPreparation, CompactionResult } from "../compaction/index.ts";
 import type { EventBus } from "../event-bus.ts";
@@ -55,7 +56,7 @@ import type { KeybindingsManager } from "../keybindings.ts";
 import type { CustomMessage } from "../messages.ts";
 import type { ModelRegistry } from "../model-registry.ts";
 import type { ScopedModel } from "../model-resolver.ts";
-import type { CreateAgentSessionOptions, CreateAgentSessionResult } from "../sdk.ts";
+import type { CreateAgentSessionOptions } from "../sdk.ts";
 import type {
 	BranchSummaryEntry,
 	CompactionEntry,
@@ -310,6 +311,35 @@ export interface CompactOptions {
  */
 export type ExtensionAgentSessionOptions = Omit<CreateAgentSessionOptions, "modelRuntime">;
 
+/** Restricted, extension-owned access to a host-created AgentSession. */
+export interface ExtensionAgentSession {
+	/** Current model, if one was selected. */
+	readonly model: Model<any> | undefined;
+	/** Current thinking level. */
+	readonly thinkingLevel: ThinkingLevel;
+	/** Whether the child has no active agent run or continuation. */
+	readonly isIdle: boolean;
+	/** Snapshot of the child's current conversation messages. */
+	readonly messages: readonly AgentMessage[];
+	/** Run a prompt through the child session. */
+	prompt(text: string, options?: PromptOptions): Promise<void>;
+	/** Subscribe to child session events. */
+	subscribe(listener: (event: AgentSessionEvent) => void): () => void;
+	/** Abort active child work and wait for it to become idle. */
+	abort(): Promise<void>;
+	/** Wait for active child work to finish. */
+	waitForIdle(): Promise<void>;
+	/** Abort and release resources owned by the child session. */
+	dispose(): void;
+}
+
+/** Result from creating an extension-owned child session. */
+export interface ExtensionAgentSessionResult {
+	session: ExtensionAgentSession;
+	/** Warning if restored state could not use its saved model. */
+	modelFallbackMessage?: string;
+}
+
 /**
  * Context passed to extension event handlers.
  */
@@ -363,7 +393,7 @@ export interface ExtensionContext {
 	 * owns the returned session and must dispose it. Disposing it does not dispose the shared
 	 * model runtime.
 	 */
-	createAgentSession(options?: ExtensionAgentSessionOptions): Promise<CreateAgentSessionResult>;
+	createAgentSession(options?: ExtensionAgentSessionOptions): Promise<ExtensionAgentSessionResult>;
 }
 
 /**
@@ -1676,7 +1706,7 @@ export interface ExtensionContextActions {
 	getContextUsage: () => ContextUsage | undefined;
 	compact: (options?: CompactOptions) => void;
 	getSystemPrompt: () => string;
-	createAgentSession: (options?: ExtensionAgentSessionOptions) => Promise<CreateAgentSessionResult>;
+	createAgentSession: (options?: ExtensionAgentSessionOptions) => Promise<ExtensionAgentSessionResult>;
 	getSystemPromptOptions?: () => BuildSystemPromptOptions;
 }
 
