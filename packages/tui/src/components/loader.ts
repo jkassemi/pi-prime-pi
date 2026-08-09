@@ -8,8 +8,12 @@ export interface LoaderIndicatorOptions {
 	intervalMs?: number;
 }
 
+/** A static message or a message generated from the monotonic elapsed time. */
+export type LoaderMessage = string | ((elapsedMs: number) => string);
+
 const DEFAULT_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 const DEFAULT_INTERVAL_MS = 80;
+const DEFAULT_MESSAGE_INTERVAL_MS = 1000;
 
 /**
  * Loader component that updates with an optional spinning animation.
@@ -23,13 +27,16 @@ export class Loader extends Text {
 	private renderIndicatorVerbatim = false;
 	private spinnerColorFn: (str: string) => string;
 	private messageColorFn: (str: string) => string;
-	private message: string = "Loading...";
+	private message: LoaderMessage = "Loading...";
+	private messageIntervalMs = DEFAULT_MESSAGE_INTERVAL_MS;
+	private startedAt = 0;
+	private running = false;
 
 	constructor(
 		ui: TUI,
 		spinnerColorFn: (str: string) => string,
 		messageColorFn: (str: string) => string,
-		message: string = "Loading...",
+		message: LoaderMessage = "Loading...",
 		indicator?: LoaderIndicatorOptions,
 	) {
 		super("", 1, 0);
@@ -45,20 +52,26 @@ export class Loader extends Text {
 	}
 
 	start(): void {
+		if (!this.running) {
+			this.startedAt = performance.now();
+			this.running = true;
+		}
 		this.updateDisplay();
 		this.restartAnimation();
 	}
 
 	stop(): void {
-		if (this.intervalId) {
-			clearInterval(this.intervalId);
-			this.intervalId = null;
-		}
+		this.clearAnimation();
+		this.running = false;
 	}
 
-	setMessage(message: string): void {
+	setMessage(message: LoaderMessage, refreshIntervalMs = DEFAULT_MESSAGE_INTERVAL_MS): void {
 		this.message = message;
+		this.messageIntervalMs = refreshIntervalMs > 0 ? refreshIntervalMs : DEFAULT_MESSAGE_INTERVAL_MS;
 		this.updateDisplay();
+		if (this.running) {
+			this.restartAnimation();
+		}
 	}
 
 	setIndicator(indicator?: LoaderIndicatorOptions): void {
@@ -70,21 +83,37 @@ export class Loader extends Text {
 	}
 
 	private restartAnimation(): void {
-		this.stop();
-		if (this.frames.length <= 1) {
+		this.clearAnimation();
+		const isDynamic = typeof this.message === "function";
+		if (this.frames.length <= 1 && !isDynamic) {
 			return;
 		}
+		const intervalMs =
+			this.frames.length > 1 ? Math.min(this.intervalMs, this.messageIntervalMs) : this.messageIntervalMs;
 		this.intervalId = setInterval(() => {
-			this.currentFrame = (this.currentFrame + 1) % this.frames.length;
+			if (this.frames.length > 1) {
+				this.currentFrame = (this.currentFrame + 1) % this.frames.length;
+			}
 			this.updateDisplay();
-		}, this.intervalMs);
+		}, intervalMs);
+	}
+
+	private clearAnimation(): void {
+		if (this.intervalId) {
+			clearInterval(this.intervalId);
+			this.intervalId = null;
+		}
 	}
 
 	private updateDisplay(): void {
 		const frame = this.frames[this.currentFrame] ?? "";
 		const renderedFrame = this.renderIndicatorVerbatim ? frame : this.spinnerColorFn(frame);
 		const indicator = frame.length > 0 ? `${renderedFrame} ` : "";
-		this.setText(`${indicator}${this.messageColorFn(this.message)}`);
+		const message =
+			typeof this.message === "function"
+				? this.message(Math.max(0, performance.now() - this.startedAt))
+				: this.message;
+		this.setText(`${indicator}${this.messageColorFn(message)}`);
 		if (this.ui) {
 			this.ui.requestRender();
 		}

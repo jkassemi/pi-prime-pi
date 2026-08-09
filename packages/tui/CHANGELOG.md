@@ -5,6 +5,7 @@
 ### Changed
 
 - Reduced alternate-screen per-frame allocation churn roughly 9-18x by painting full-width layout rows as direct line references instead of recompositing every visible row through ANSI/grapheme segmentation on each frame.
+- Loaders can now render monotonic elapsed-time messages and refresh them even with static or hidden indicators.
 
 ## [0.84.1] - 2026-08-07
 

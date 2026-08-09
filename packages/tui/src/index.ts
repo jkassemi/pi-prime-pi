@@ -16,7 +16,7 @@ export { Editor, type EditorOptions, type EditorTheme } from "./components/edito
 export { HStack } from "./components/h-stack.ts";
 export { Image, type ImageOptions, type ImageTheme } from "./components/image.ts";
 export { Input } from "./components/input.ts";
-export { Loader, type LoaderIndicatorOptions } from "./components/loader.ts";
+export { Loader, type LoaderIndicatorOptions, type LoaderMessage } from "./components/loader.ts";
 export { type DefaultTextStyle, Markdown, type MarkdownOptions, type MarkdownTheme } from "./components/markdown.ts";
 export { ScrollView, type ScrollViewOptions, type ScrollViewScrollbar } from "./components/scroll-view.ts";
 export {

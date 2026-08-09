@@ -456,6 +456,7 @@ const loader = new Loader(
 );
 loader.start();
 loader.setMessage("Still loading...");
+loader.setMessage((elapsedMs) => `Loading for ${Math.floor(elapsedMs / 1000)}s`);
 loader.stop();
 ```
 

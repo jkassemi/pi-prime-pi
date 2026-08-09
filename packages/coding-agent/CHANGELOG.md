@@ -10,6 +10,7 @@
 ### Changed
 
 - Replaced the inherited Mistral SDK transport with a native Chat Completions HTTP stream, eliminating its generated client and schema runtime overhead.
+- The default interactive working status now shows continuously updating elapsed seconds; extension-custom working messages remain unchanged.
 
 ## [0.84.1] - 2026-08-07
 

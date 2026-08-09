@@ -2624,8 +2624,8 @@ ctx.ui.setStatus("my-ext", "Processing...");
 ctx.ui.setStatus("my-ext", undefined);  // Clear
 
 // Working loader (shown during streaming)
-ctx.ui.setWorkingMessage("Thinking deeply...");
-ctx.ui.setWorkingMessage();  // Restore default
+ctx.ui.setWorkingMessage("Thinking deeply..."); // Custom messages are shown verbatim
+ctx.ui.setWorkingMessage();  // Restore default, including its elapsed timer
 ctx.ui.setWorkingVisible(false);  // Hide the built-in working loader row entirely
 ctx.ui.setWorkingVisible(true);   // Show the built-in working loader row
 

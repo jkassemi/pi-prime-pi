@@ -382,6 +382,16 @@ export function createInteractiveTuiReference(getTui: () => TUI): TUI {
 	});
 }
 
+export function formatWorkingMessage(message: string, elapsedMs: number, interruptHint?: string): string {
+	const totalSeconds = Math.floor(elapsedMs / 1000);
+	const hours = Math.floor(totalSeconds / 3600);
+	const minutes = Math.floor((totalSeconds % 3600) / 60);
+	const seconds = totalSeconds % 60;
+	const duration = hours > 0 ? `${hours}h ${minutes}m` : minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+	const hint = interruptHint ? ` (${interruptHint} to interrupt)` : "";
+	return `${message} (${duration})${hint}`;
+}
+
 export class InteractiveMode {
 	private runtimeHost: AgentSessionRuntime;
 	private renderer: TuiMainScreen | TuiAltScreen;
@@ -2077,6 +2087,9 @@ export class InteractiveMode {
 					this.ui,
 					this.workingMessage ?? this.defaultWorkingMessage,
 					this.workingIndicatorOptions,
+					this.workingMessage === undefined
+						? (elapsedMs) => formatWorkingMessage(this.defaultWorkingMessage, elapsedMs)
+						: undefined,
 				),
 			);
 		}
@@ -2186,9 +2199,9 @@ export class InteractiveMode {
 		this.workingMessage = undefined;
 		this.workingVisible = true;
 		this.setWorkingIndicator();
-		if (this.activeStatusIndicator?.kind === "working") {
-			this.activeStatusIndicator.setMessage(
-				`${this.defaultWorkingMessage} (${keyText("app.interrupt")} to interrupt)`,
+		if (this.activeStatusIndicator instanceof WorkingStatusIndicator) {
+			this.activeStatusIndicator.setMessage((elapsedMs) =>
+				formatWorkingMessage(this.defaultWorkingMessage, elapsedMs, keyText("app.interrupt")),
 			);
 		}
 		this.setHiddenThinkingLabel();
@@ -2352,8 +2365,8 @@ export class InteractiveMode {
 			setStatus: (key, text) => this.setExtensionStatus(key, text),
 			setWorkingMessage: (message) => {
 				this.workingMessage = message;
-				if (this.activeStatusIndicator?.kind === "working") {
-					this.activeStatusIndicator.setMessage(message ?? this.defaultWorkingMessage);
+				if (this.activeStatusIndicator instanceof WorkingStatusIndicator) {
+					this.activeStatusIndicator.setWorkingMessage(message);
 				}
 			},
 			setWorkingVisible: (visible) => this.setWorkingVisible(visible),
@@ -3088,6 +3101,9 @@ export class InteractiveMode {
 							this.ui,
 							this.workingMessage ?? this.defaultWorkingMessage,
 							this.workingIndicatorOptions,
+							this.workingMessage === undefined
+								? (elapsedMs) => formatWorkingMessage(this.defaultWorkingMessage, elapsedMs)
+								: undefined,
 						),
 					);
 				} else {

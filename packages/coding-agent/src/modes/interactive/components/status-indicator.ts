@@ -1,4 +1,4 @@
-import { type Component, Loader, type TUI } from "@earendil-works/pi-tui";
+import { type Component, Loader, type LoaderMessage, type TUI } from "@earendil-works/pi-tui";
 import type { WorkingIndicatorOptions } from "../../../core/extensions/index.ts";
 import { theme } from "../theme/theme.ts";
 import { CountdownTimer } from "./countdown-timer.ts";
@@ -14,7 +14,7 @@ export class StatusIndicator extends Loader {
 		ui: TUI,
 		spinnerColorFn: (str: string) => string,
 		messageColorFn: (str: string) => string,
-		message: string,
+		message: LoaderMessage,
 		indicator?: WorkingIndicatorOptions,
 	) {
 		super(ui, spinnerColorFn, messageColorFn, message, indicator);
@@ -27,15 +27,29 @@ export class StatusIndicator extends Loader {
 }
 
 export class WorkingStatusIndicator extends StatusIndicator {
-	constructor(ui: TUI, message: string, indicator?: WorkingIndicatorOptions) {
+	private readonly defaultMessage: string;
+	private readonly elapsedMessage: ((elapsedMs: number) => string) | undefined;
+
+	constructor(
+		ui: TUI,
+		message: string,
+		indicator?: WorkingIndicatorOptions,
+		elapsedMessage?: (elapsedMs: number) => string,
+	) {
 		super(
 			"working",
 			ui,
 			(spinner) => theme.fg("accent", spinner),
 			(text) => theme.fg("muted", text),
-			message,
+			elapsedMessage ?? message,
 			indicator,
 		);
+		this.defaultMessage = message;
+		this.elapsedMessage = elapsedMessage;
+	}
+
+	setWorkingMessage(message: string | undefined): void {
+		this.setMessage(message === undefined ? (this.elapsedMessage ?? this.defaultMessage) : message);
 	}
 }
 
