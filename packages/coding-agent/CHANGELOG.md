@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added command-only `ExtensionCommandContext.replaceConversation()` for replacing the active conversation with an extension-supplied message stream while retaining prior session history.
 - Added `ExtensionContext.createAgentSession()` for creating independent extension-owned sessions through a restricted handle while sharing the current canonical model runtime.
 - Added a fullscreen exit output setting to choose between printing the final transcript and only a session resume hint.
 

@@ -1048,6 +1048,60 @@ export class SessionManager {
 		this._persist(entry);
 	}
 
+	/**
+	 * Append a new root conversation while retaining the existing tree.
+	 * The supplied messages become the active branch; existing entries are never edited.
+	 */
+	replaceConversation(messages: readonly AgentMessage[]): string[] {
+		if (!Array.isArray(messages)) {
+			throw new TypeError("Conversation must be an array of messages");
+		}
+		if (messages.length === 0) {
+			throw new TypeError("Conversation must contain at least one message");
+		}
+		for (const message of messages) {
+			if (!message || typeof message !== "object" || typeof message.role !== "string") {
+				throw new TypeError("Conversation contains an invalid message");
+			}
+		}
+
+		const ids = new Map(this.byId);
+		const entries: SessionMessageEntry[] = [];
+		for (const message of messages) {
+			const id = generateId(ids);
+			ids.set(id, {} as SessionEntry);
+			entries.push({
+				type: "message",
+				id,
+				parentId: entries.at(-1)?.id ?? null,
+				timestamp: new Date().toISOString(),
+				message,
+			});
+		}
+
+		if (this.persist && this.sessionFile && entries.length > 0) {
+			const serialized = entries.map((entry) => `${JSON.stringify(entry)}\n`).join("");
+			if (this.flushed && existsSync(this.sessionFile)) {
+				appendFileSync(this.sessionFile, serialized);
+			} else {
+				const fd = openSync(this.sessionFile, "wx");
+				try {
+					for (const entry of [...this.fileEntries, ...entries]) writeFileSync(fd, `${JSON.stringify(entry)}\n`);
+				} finally {
+					closeSync(fd);
+				}
+			}
+		}
+
+		for (const entry of entries) {
+			this.fileEntries.push(entry);
+			this.byId.set(entry.id, entry);
+		}
+		this.leafId = entries.at(-1)!.id;
+		this.flushed = true;
+		return entries.map((entry) => entry.id);
+	}
+
 	/** Append a message as child of current leaf, then advance leaf. Returns entry id.
 	 * Does not allow writing CompactionSummaryMessage and BranchSummaryMessage directly.
 	 * Reason: we want these to be top-level entries in the session, not message session entries,

@@ -364,7 +364,6 @@ export class AgentSession {
 	private _extensionShutdownHandler?: ShutdownHandler;
 	private _extensionErrorListener?: ExtensionErrorListener;
 	private _extensionErrorUnsubscriber?: () => void;
-
 	private _modelRuntime: ModelRuntime;
 	private _createAgentSession: (options?: ExtensionAgentSessionOptions) => Promise<ExtensionAgentSessionResult>;
 
@@ -1568,6 +1567,15 @@ export class AgentSession {
 		this.abortRetry();
 		this.agent.abort();
 		await this.waitForIdle();
+	}
+
+	async replaceConversation(messages: readonly AgentMessage[]): Promise<readonly string[]> {
+		if (!this.isIdle) {
+			throw new Error("Cannot replace the conversation while the agent is active");
+		}
+		const ids = this.sessionManager.replaceConversation(messages);
+		this.agent.state.messages = this.sessionManager.buildSessionContext().messages;
+		return ids;
 	}
 
 	async waitForIdle(): Promise<void> {

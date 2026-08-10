@@ -1163,6 +1163,22 @@ This has the same shape and mutability as `before_agent_start` `event.systemProm
 
 This reports the current base prompt inputs. It does not include per-turn `before_agent_start` chained system-prompt changes, later `context` event message mutations, or `before_provider_request` payload rewrites.
 
+### ctx.replaceConversation(messages)
+
+Command handlers can make a supplied `AgentMessage[]` the active conversation:
+
+```typescript
+pi.registerCommand("rewrite", {
+  handler: async (_args, ctx) => {
+    await ctx.replaceConversation([
+      { role: "user", content: "Start here", timestamp: Date.now() },
+    ]);
+  },
+});
+```
+
+This method is available only on `ExtensionCommandContext`, never event-handler contexts. It requires the agent to already be idle; it does not wait, compact, group turns, repair tool pairs, or apply model semantics. The input must be an array of message objects with a string `role`; the extension owns all other stream validity policy. The messages are appended as a new root branch, so prior entries remain immutable and recoverable through the session tree. The array must be non-empty. It returns the new entry IDs. Malformed input, an active agent, or persistence failure rejects without changing the in-memory conversation. Persistence uses synchronous file operations but is not an atomic file transaction; a filesystem failure may leave a partial file.
+
 ### ctx.waitForIdle()
 
 Wait for the agent to fully settle, including automatic retries, auto-compaction retries, and queued continuations:

@@ -407,6 +407,9 @@ export interface ExtensionCommandContext extends ExtensionContext {
 	/** Wait for the agent to finish streaming */
 	waitForIdle(): Promise<void>;
 
+	/** Replace the active conversation with a new root branch. Command-only and idle-only. */
+	replaceConversation(messages: readonly AgentMessage[]): Promise<readonly string[]>;
+
 	/** Start a new session, optionally with initialization. */
 	newSession(options?: {
 		parentSession?: string;
@@ -1716,6 +1719,7 @@ export interface ExtensionContextActions {
  */
 export interface ExtensionCommandContextActions {
 	waitForIdle: () => Promise<void>;
+	replaceConversation?: (messages: readonly AgentMessage[]) => Promise<readonly string[]>;
 	newSession: (options?: {
 		parentSession?: string;
 		setup?: (sessionManager: SessionManager) => Promise<void>;
