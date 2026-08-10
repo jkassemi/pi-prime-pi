@@ -282,6 +282,7 @@ export class ExtensionRunner {
 	private getSignalFn: () => AbortSignal | undefined = () => undefined;
 	private waitForIdleFn: () => Promise<void> = async () => {};
 	private replaceConversationFn: (messages: readonly AgentMessage[]) => Promise<readonly string[]> = async () => [];
+	private continueConversationFn: () => Promise<void> = async () => {};
 	private abortFn: () => void = () => {};
 	private hasPendingMessagesFn: () => boolean = () => false;
 	private getContextUsageFn: () => ContextUsage | undefined = () => undefined;
@@ -421,6 +422,7 @@ export class ExtensionRunner {
 		if (actions) {
 			this.waitForIdleFn = actions.waitForIdle;
 			this.replaceConversationFn = actions.replaceConversation ?? (async () => []);
+			this.continueConversationFn = actions.continueConversation ?? (async () => {});
 			this.newSessionHandler = actions.newSession;
 			this.forkHandler = actions.fork;
 			this.navigateTreeHandler = actions.navigateTree;
@@ -431,6 +433,7 @@ export class ExtensionRunner {
 
 		this.waitForIdleFn = async () => {};
 		this.replaceConversationFn = async () => [];
+		this.continueConversationFn = async () => {};
 		this.newSessionHandler = async () => ({ cancelled: false });
 		this.forkHandler = async () => ({ cancelled: false });
 		this.navigateTreeHandler = async () => ({ cancelled: false });
@@ -781,6 +784,10 @@ export class ExtensionRunner {
 		context.replaceConversation = (messages) => {
 			this.assertActive();
 			return this.replaceConversationFn(messages);
+		};
+		context.continueConversation = () => {
+			this.assertActive();
+			return this.continueConversationFn();
 		};
 		context.newSession = (options) => {
 			this.assertActive();

@@ -1179,6 +1179,19 @@ pi.registerCommand("rewrite", {
 
 This method is available only on `ExtensionCommandContext`, never event-handler contexts. It requires the agent to already be idle; it does not wait, compact, group turns, repair tool pairs, or apply model semantics. The input must be an array of message objects with a string `role`; the extension owns all other stream validity policy. The messages are appended as a new root branch, so prior entries remain immutable and recoverable through the session tree. The array must be non-empty. It returns the new entry IDs. Malformed input, an active agent, or persistence failure rejects without changing the in-memory conversation. Persistence uses synchronous file operations but is not an atomic file transaction; a filesystem failure may leave a partial file.
 
+### ctx.continueConversation()
+
+Command handlers can continue from the active conversation without appending another input message:
+
+```typescript
+await ctx.replaceConversation(messages);
+if (messages.at(-1)?.role === "user") {
+  await ctx.continueConversation();
+}
+```
+
+This operation is command-only and idle-only. It delegates terminal-role validation to the agent, runs ordinary continuation and post-run lifecycle handling, and resolves after the agent settles. Use it when an extension has already supplied the complete input stream; do not add a synthetic user message solely to trigger generation.
+
 ### ctx.waitForIdle()
 
 Wait for the agent to fully settle, including automatic retries, auto-compaction retries, and queued continuations:

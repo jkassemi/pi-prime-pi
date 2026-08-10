@@ -43,7 +43,20 @@ describe("AgentSession.replaceConversation", () => {
 		expect(reloaded.getBranch(oldUserId).map((entry) => entry.id)).toContain(oldUserId);
 	});
 
-	it("rejects replacement while the agent is active", async () => {
+	it("continues from a replacement user message without appending another input", async () => {
+		const harness = await createHarness({ models: [{ id: "faux-1", reasoning: false }] });
+		harnesses.push(harness);
+		await harness.session.replaceConversation([
+			{ role: "user", content: "replacement question", timestamp: Date.now() },
+		]);
+		harness.setResponses([fauxAssistantMessage("replacement answer")]);
+
+		await harness.session.continueConversation();
+
+		expect(harness.session.messages.map(getMessageText)).toEqual(["replacement question", "replacement answer"]);
+	});
+
+	it("rejects replacement and continuation while the agent is active", async () => {
 		let release!: () => void;
 		let signalStart!: () => void;
 		const started = new Promise<void>((resolve) => {
@@ -70,6 +83,9 @@ describe("AgentSession.replaceConversation", () => {
 		await expect(
 			harness.session.replaceConversation([{ role: "user", content: "nope", timestamp: Date.now() }]),
 		).rejects.toThrow("Cannot replace the conversation while the agent is active");
+		await expect(harness.session.continueConversation()).rejects.toThrow(
+			"Cannot continue the conversation while the agent is active",
+		);
 		release();
 		await prompt;
 	});

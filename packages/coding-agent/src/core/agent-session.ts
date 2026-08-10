@@ -1578,6 +1578,23 @@ export class AgentSession {
 		return ids;
 	}
 
+	async continueConversation(): Promise<void> {
+		if (!this.isIdle) {
+			throw new Error("Cannot continue the conversation while the agent is active");
+		}
+		this._isAgentRunActive = true;
+		try {
+			await this.agent.continue();
+			while (await this._handlePostAgentRun()) {
+				await this.agent.continue();
+			}
+		} finally {
+			this._systemPromptOverride = undefined;
+			this._flushPendingBashMessages();
+			await this._emitAgentSettled();
+		}
+	}
+
 	async waitForIdle(): Promise<void> {
 		if (this.isIdle) {
 			return;

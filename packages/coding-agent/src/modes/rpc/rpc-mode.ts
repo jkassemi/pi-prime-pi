@@ -322,6 +322,7 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 			commandContextActions: {
 				waitForIdle: () => session.waitForIdle(),
 				replaceConversation: (messages) => session.replaceConversation(messages),
+				continueConversation: () => session.continueConversation(),
 				newSession: async (options) => runtimeHost.newSession(options),
 				fork: async (entryId, forkOptions) => {
 					const result = await runtimeHost.fork(entryId, forkOptions);

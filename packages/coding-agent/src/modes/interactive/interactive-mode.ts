@@ -1835,6 +1835,7 @@ export class InteractiveMode {
 			commandContextActions: {
 				waitForIdle: () => this.session.waitForIdle(),
 				replaceConversation: (messages) => this.session.replaceConversation(messages),
+				continueConversation: () => this.session.continueConversation(),
 				newSession: async (options) => {
 					this.clearStatusIndicator();
 					try {

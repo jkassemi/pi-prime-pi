@@ -410,6 +410,9 @@ export interface ExtensionCommandContext extends ExtensionContext {
 	/** Replace the active conversation with a new root branch. Command-only and idle-only. */
 	replaceConversation(messages: readonly AgentMessage[]): Promise<readonly string[]>;
 
+	/** Continue from the active conversation without appending another input message. Command-only and idle-only. */
+	continueConversation(): Promise<void>;
+
 	/** Start a new session, optionally with initialization. */
 	newSession(options?: {
 		parentSession?: string;
@@ -1720,6 +1723,7 @@ export interface ExtensionContextActions {
 export interface ExtensionCommandContextActions {
 	waitForIdle: () => Promise<void>;
 	replaceConversation?: (messages: readonly AgentMessage[]) => Promise<readonly string[]>;
+	continueConversation?: () => Promise<void>;
 	newSession: (options?: {
 		parentSession?: string;
 		setup?: (sessionManager: SessionManager) => Promise<void>;
